@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catbox Uploader</title>
+<meta name="color-scheme" content="dark">
+<style>
+@property --angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+:root {
+  --bg: #07080c;
+  --surface: rgba(255, 255, 255, 0.045);
+  --line: rgba(255, 255, 255, 0.09);
+  --text: #eef1f7;
+  --muted: #8a93a6;
+  --cyan: #22d3ee;
+  --violet: #8b5cf6;
+  --danger: #f87171;
+  --ok: #34d399;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { min-height: 100%; }
+body {
+  font-family: var(--font);
+  color: var(--text);
+  background:
+    radial-gradient(60rem 40rem at 15% -10%, rgba(139, 92, 246, 0.16), transparent 60%),
+    radial-gradient(50rem 36rem at 100% 110%, rgba(34, 211, 238, 0.13), transparent 60%),
+    linear-gradient(180deg, #0b0d13, var(--bg));
+  background-attachment: fixed;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  -webkit-font-smoothing: antialiased;
+}
+.card {
+  width: 100%;
+  max-width: 520px;
+  padding: 36px 32px 32px;
+  border-radius: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(34, 211, 238, 0.05);
+}
+header { text-align: center; margin-bottom: 28px; }
+h1 { font-size: 1.75rem; font-weight: 650; letter-spacing: -0.02em; }
+header p { margin-top: 6px; color: var(--muted); font-size: 0.95rem; }
+
+.dropzone {
+  --angle: 0deg;
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 38px 20px;
+  text-align: center;
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  background:
+    linear-gradient(#0c0e15, #0c0e15) padding-box,
+    conic-gradient(from var(--angle), rgba(255,255,255,0.08) 0 60%, var(--cyan) 80%, var(--violet) 92%, rgba(255,255,255,0.08)) border-box;
+  animation: spin 6s linear infinite;
+  transition: transform .25s ease, box-shadow .25s ease;
+  cursor: pointer;
+}
+.dropzone:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.dropzone.over { transform: scale(1.02); box-shadow: 0 0 0 4px rgba(34,211,238,.12), 0 0 40px rgba(34,211,238,.25); animation-duration: 1.6s; }
+.dropzone svg { width: 34px; height: 34px; color: var(--cyan); transition: transform .3s ease; }
+.dropzone.over svg { transform: translateY(-4px); }
+.drop-title { font-weight: 550; }
+.drop-or { color: var(--muted); font-size: .85rem; }
+@keyframes spin { to { --angle: 360deg; } }
+
+button {
+  font: inherit; cursor: pointer; border: 0; border-radius: 12px;
+  padding: 11px 20px; font-weight: 550; color: var(--text);
+  transition: transform .15s ease, box-shadow .25s ease, opacity .2s ease, background .2s ease;
+}
+button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+button:active:not(:disabled) { transform: scale(.97); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.ghost { background: rgba(255,255,255,.07); border: 1px solid var(--line); }
+.ghost:hover:not(:disabled) { background: rgba(255,255,255,.12); }
+.primary { background: linear-gradient(135deg, var(--cyan), var(--violet)); color: #06070b; box-shadow: 0 8px 28px rgba(34,211,238,.25); }
+.primary:hover:not(:disabled) { box-shadow: 0 10px 34px rgba(139,92,246,.4); }
+.link { background: none; color: var(--muted); padding: 8px 12px; }
+.link:hover { color: var(--text); }
+
+.section { display: none; margin-top: 24px; }
+.file { text-align: center; }
+.file-name { font-weight: 550; word-break: break-all; }
+.file-size { margin-top: 2px; color: var(--muted); font-size: .88rem; }
+.card[data-state="ready"] .file, .card[data-state="uploading"] .file, .card[data-state="error"] .file.has-file { display: block; animation: pop .35s cubic-bezier(.2,.9,.3,1.3); }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+
+.progress { display: none; margin-top: 18px; }
+.card[data-state="uploading"] .progress { display: block; }
+.track { height: 6px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+.bar { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--violet)); box-shadow: 0 0 14px rgba(34,211,238,.6); transition: width .2s ease; }
+.track.indeterminate .bar { width: 35%; animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.pct { margin-top: 8px; text-align: center; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+
+.actions { display: none; margin-top: 22px; justify-content: center; }
+.card[data-state="ready"] .actions, .card[data-state="uploading"] .actions, .card[data-state="error"] .actions.has-file { display: flex; }
+.actions .primary { min-width: 160px; }
+
+.key { display: none; margin-top: 18px; }
+.key.show { display: block; animation: pop .3s ease; }
+input[type="password"], .url {
+  width: 100%; padding: 12px 14px; border-radius: 12px; font: inherit; font-size: .92rem;
+  color: var(--text); background: rgba(0,0,0,.3); border: 1px solid var(--line);
+}
+input[type="password"]:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+
+.status { margin-top: 22px; text-align: center; font-size: .92rem; color: var(--muted); min-height: 1.3em; }
+.card[data-state="uploading"] .status { color: var(--cyan); animation: breathe 1.4s ease-in-out infinite; }
+.card[data-state="done"] .status { color: var(--ok); font-weight: 550; }
+.card[data-state="error"] .status { color: var(--danger); font-weight: 550; }
+.detail { margin-top: 4px; text-align: center; color: var(--danger); font-size: .85rem; min-height: 1.2em; }
+@keyframes breathe { 50% { opacity: .55; } }
+.card.shake { animation: shake .45s ease; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+.result { border-top: 1px solid var(--line); padding-top: 22px; }
+.card[data-state="done"] .result { display: block; animation: pop .45s cubic-bezier(.2,.9,.3,1.2); }
+.card[data-state="done"] .dropzone, .card[data-state="done"] .file, .card[data-state="done"] .actions { display: none; }
+.url { display: block; text-align: center; color: var(--cyan); }
+.result-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+.result-actions a { text-decoration: none; display: inline-block; }
+.reset-row { text-align: center; margin-top: 12px; }
+
+@media (max-width: 480px) {
+  .card { padding: 28px 18px 24px; border-radius: 22px; }
+  .dropzone { padding: 30px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+}
+</style>
+</head>
+<body>
+<main class="card" id="card" data-state="idle">
+  <header>
+    <h1>Catbox Uploader</h1>
+    <p>Fast and simple file hosting</p>
+  </header>
+
+  <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop a file or choose one">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+    <span class="drop-title">Drop your file here</span>
+    <span class="drop-or">or</span>
+    <button type="button" class="ghost" id="chooseBtn">Choose File</button>
+    <input type="file" id="fileInput" hidden>
+  </div>
+
+  <div class="section file" id="fileBox">
+    <div class="file-name" id="fileName"></div>
+    <div class="file-size" id="fileSize"></div>
+  </div>
+
+  <div class="progress" id="progress">
+    <div class="track" id="track"><div class="bar" id="bar"></div></div>
+    <div class="pct" id="pct"></div>
+  </div>
+
+  <div class="key" id="keyBox">
+    <input type="password" id="keyInput" placeholder="Access key" autocomplete="off" aria-label="Access key">
+  </div>
+
+  <div class="actions" id="actions" style="justify-content:center">
+    <button type="button" class="primary" id="uploadBtn">Upload</button>
+  </div>
+
+  <p class="status" id="status" role="status" aria-live="polite">Choose a file to upload</p>
+  <p class="detail" id="detail"></p>
+
+  <div class="section result" id="result">
+    <input class="url" id="urlBox" readonly aria-label="File URL">
+    <div class="result-actions">
+      <button type="button" class="ghost" id="copyBtn">Copy URL</button>
+      <a class="ghost" id="openLink" href="#" target="_blank" rel="noopener noreferrer"><button type="button" class="ghost" tabindex="-1">Open</button></a>
+    </div>
+  </div>
+
+  <div class="reset-row">
+    <button type="button" class="link" id="resetBtn">Upload another file</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var MAX_SIZE = 50 * 1024 * 1024;
+  var $ = function (id) { return document.getElementById(id); };
+  var card = $("card"), dz = $("dropzone"), input = $("fileInput");
+  var file = null, xhr = null, copyTimer = null;
+
+  var STATUS = {
+    idle: "Choose a file to upload",
+    ready: "Ready to upload",
+    uploading: "Uploading...",
+    done: "Upload complete",
+    error: "Upload failed"
+  };
+
+  function formatSize(n) {
+    if (n < 1024) return n + " B";
+    var units = ["KB", "MB", "GB"], i = -1;
+    do { n /= 1024; i++; } while (n >= 1024 && i < units.length - 1);
+    return n.toFixed(n >= 100 ? 0 : 1) + " " + units[i];
+  }
+
+  function setState(state, detail) {
+    card.dataset.state = state;
+    $("status").textContent = STATUS[state];
+    $("detail").textContent = detail || "";
+    var has = !!file;
+    $("fileBox").classList.toggle("has-file", has);
+    $("actions").classList.toggle("has-file", has);
+    $("uploadBtn").disabled = state === "uploading";
+    $("uploadBtn").textContent = state === "error" ? "Try again" : "Upload";
+    $("resetBtn").style.visibility = state === "idle" ? "hidden" : "visible";
+    if (state === "error") {
+      card.classList.remove("shake");
+      void card.offsetWidth;
+      card.classList.add("shake");
+    }
+  }
+
+  function pickFile(f) {
+    if (!f) return;
+    if (f.size === 0) { file = null; return setState("idle", "This file is empty."); }
+    if (f.size > MAX_SIZE) { file = null; return setState("idle", "File is larger than " + formatSize(MAX_SIZE) + "."); }
+    file = f;
+    $("fileName").textContent = f.name;
+    $("fileSize").textContent = formatSize(f.size);
+    resetProgress();
+    setState("ready");
+  }
+
+  function resetProgress() {
+    $("bar").style.width = "0";
+    $("track").classList.remove("indeterminate");
+    $("pct").textContent = "";
+  }
+
+  function fullReset() {
+    if (xhr) { xhr.abort(); xhr = null; }
+    file = null;
+    input.value = "";
+    $("urlBox").value = "";
+    resetProgress();
+    setState("idle");
+  }
+
+  function upload() {
+    if (!file || card.dataset.state === "uploading") return;
+    var data = new FormData();
+    data.append("file", file, file.name);
+
+    xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/upload");
+    var key = $("keyInput").value;
+    if (key) xhr.setRequestHeader("x-upload-secret", key);
+    xhr.timeout = 5 * 60 * 1000;
+
+    xhr.upload.onprogress = function (e) {
+      if (!e.lengthComputable) { $("track").classList.add("indeterminate"); return; }
+      var p = Math.round((e.loaded / e.total) * 100);
+      if (p >= 100) {
+        $("track").classList.add("indeterminate");
+        $("pct").textContent = "Processing";
+      } else {
+        $("bar").style.width = p + "%";
+        $("pct").textContent = p + "%";
+      }
+    };
+
+    xhr.onload = function () {
+      xhr = null;
+      var json = null;
+      try { json = JSON.parse(this.responseText); } catch (e) {}
+      $("track").classList.remove("indeterminate");
+      if (this.status === 200 && json && json.success && typeof json.url === "string") {
+        $("bar").style.width = "100%";
+        $("urlBox").value = json.url;
+        var link = $("openLink");
+        link.href = json.url;
+        $("copyBtn").textContent = "Copy URL";
+        setState("done");
+        return;
+      }
+      var msg = json && json.error;
+      if (!msg && this.status === 413) msg = "File is too large for the server.";
+      if (this.status === 401) $("keyBox").classList.add("show");
+      setState("error", msg || "Unexpected server response.");
+    };
+    xhr.onerror = function () { xhr = null; $("track").classList.remove("indeterminate"); setState("error", "Network error. Check your connection."); };
+    xhr.ontimeout = function () { xhr = null; $("track").classList.remove("indeterminate"); setState("error", "The request timed out."); };
+
+    resetProgress();
+    setState("uploading");
+    xhr.send(data);
+  }
+
+  function copyUrl() {
+    var box = $("urlBox"), btn = $("copyBtn");
+    function done() {
+      btn.textContent = "Copied";
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(function () { btn.textContent = "Copy URL"; }, 1800);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(box.value).then(done, function () { box.select(); });
+    } else {
+      box.select();
+    }
+  }
+
+  ["dragenter", "dragover"].forEach(function (t) {
+    dz.addEventListener(t, function (e) { e.preventDefault(); dz.classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach(function (t) {
+    dz.addEventListener(t, function (e) { e.preventDefault(); dz.classList.remove("over"); });
+  });
+  dz.addEventListener("drop", function (e) { pickFile(e.dataTransfer.files[0]); });
+  window.addEventListener("dragover", function (e) { e.preventDefault(); });
+  window.addEventListener("drop", function (e) { e.preventDefault(); });
+
+  dz.addEventListener("click", function () { input.click(); });
+  dz.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); }
+  });
+  $("chooseBtn").addEventListener("click", function (e) { e.stopPropagation(); input.click(); });
+  input.addEventListener("click", function (e) { e.stopPropagation(); });
+  input.addEventListener("change", function () { pickFile(input.files[0]); });
+  $("uploadBtn").addEventListener("click", upload);
+  $("copyBtn").addEventListener("click", copyUrl);
+  $("resetBtn").addEventListener("click", fullReset);
+
+  setState("idle");
+})();
+</script>
+</body>
+</html>

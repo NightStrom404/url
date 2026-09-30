@@ -1,0 +1,9 @@
+{
+  "name": "catbox-uploader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal Catbox file uploader for Vercel",
+  "engines": {
+    "node": "22.x"
+  }
+}
