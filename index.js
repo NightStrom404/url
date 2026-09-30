@@ -197,7 +197,10 @@ module.exports = async function handler(req, res) {
       catboxRes = await fetch(CATBOX_URL, {
         method: "POST",
         body: out,
-        headers: { "x-requested-with": "XMLHttpRequest" },
+        headers: {
+          "x-requested-with": "XMLHttpRequest",
+          "user-agent": "Mozilla/5.0 (compatible; CatboxUploader/1.0)",
+        },
         signal: controller.signal,
       });
       text = (await catboxRes.text()).trim();
@@ -211,7 +214,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (!catboxRes.ok) {
-      console.error("Catbox HTTP error:", catboxRes.status);
+      console.error("Catbox HTTP error:", catboxRes.status, text.slice(0, 120));
       return fail(res, 502, "Upload service returned an error");
     }
     if (!text) {
